@@ -1,0 +1,26 @@
+---
+- hosts: master
+  tasks:
+    - name: Archive hadoop configurations
+      archive:
+        path: /etc/hadoop/conf/
+        dest: ~/hadoop_conf.tgz
+        format: gz
+
+    - name: Download hadoop configurations
+      fetch:
+        src: ~/hadoop_conf.tgz
+        dest: ../resources/
+        flat: yes
+
+- hosts: jupyter
+  gather_facts: True
+  tasks:
+    - name: Ensure hadoop conf directory exists
+      file:
+        path: ~/hadoop_conf/
+        state: directory
+    - name: Upload hadoop configuragion
+      unarchive:
+        src: ../resources/hadoop_conf.tgz
+        dest: ~/hadoop_conf/

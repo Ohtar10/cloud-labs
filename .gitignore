@@ -1,0 +1,13 @@
+# IDE
+.idea
+*.iml
+
+# Terraform
+*.tfvars
+*.tfstate
+*.tfstate.backup
+*.terraform
+
+# Keys
+spark-emr-jupyter/keys/spark-emr
+spark-emr-jupyter/keys/spark-emr.pub

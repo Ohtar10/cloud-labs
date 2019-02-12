@@ -1,0 +1,5 @@
+---
+- hosts: jupyter
+  tasks:
+    - name: Start Jupyter in remote machine
+      script: ../resources/start_jupyter.sh -ip $(hostname -i) -d

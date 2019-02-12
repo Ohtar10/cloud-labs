@@ -1,0 +1,13 @@
+[local]
+localhost   ansible_connection=local
+
+[jupyter]
+ec2-lalala.lalala.compute.amazonaws.com	ansible_ssh_private_key_file=../keys/spark-emr	ansible_user=ubuntu
+
+[master]
+ec2-lalala.lalala.compute.amazonaws.com	ansible_ssh_private_key_file=../keys/spark-emr	ansible_user=hadoop
+
+[cores]
+ec2-lalala.lalala.compute.amazonaws.com	ansible_ssh_private_key_file=../keys/spark-emr	ansible_user=hadoop     
+ec2-lalala.lalala.compute.amazonaws.com	ansible_ssh_private_key_file=../keys/spark-emr	ansible_user=hadoop     
+ec2-lalala.lalala.compute.amazonaws.com	ansible_ssh_private_key_file=../keys/spark-emr	ansible_user=hadoop     

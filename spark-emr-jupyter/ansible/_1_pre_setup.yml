@@ -1,0 +1,87 @@
+---
+# target all host groups except for local
+#- hosts: '~[^local]'
+- hosts: jupyter
+  gather_facts: False
+  become: True
+  tasks:
+    - name: Install python 3 on jupyter host
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python3.6 && ln -s /usr/bin/python3 /usr/bin/python)
+      changed_when: False
+
+    - name: Install tools
+      apt: name={{item}} state=present update_cache=yes
+      with_items:
+        - python3-pip
+        - curl
+        - tmux
+        - htop
+        - openjdk-8-jre-headless
+
+    - name: Ensure pip has symlink
+      raw: test -e /usr/bin/pip || (apt -y update && apt install -y python3-pip && ln -s /usr/bin/pip3 /usr/bin/pip)
+      changed_when: False
+
+    - name: Install Jupyter and tools
+      pip: name={{item}} state=present
+      with_items:
+        - jupyter
+        - spylon-kernel
+
+    - name: Install Spylon Kernel
+      raw: python -m spylon_kernel install
+
+    - name: Ensure software folder exists
+      become: False
+      file:
+        path: ~/software
+        state: directory
+        mode: 0755
+
+    - name: Download Apache Spark
+      become: False
+      get_url:
+        url: https://archive.apache.org/dist/spark/spark-2.2.0/spark-2.2.0-bin-hadoop2.7.tgz
+        dest: ~/software/spark.tgz
+        mode: 0755
+
+    - name: Install Apache Spark
+      become: False
+      unarchive:
+        remote_src: yes
+        src: ~/software/spark.tgz
+        dest: ~/software/
+
+    - name: Ensure a symlink for spark
+      become: False
+      file:
+        src: ~/software/spark-2.4.0-bin-hadoop2.7
+        dest: ~/software/spark
+        state: link
+
+    - name: Ensure deps directory exists
+      become: False
+      file:
+        path: ~/deps
+        state: directory
+
+    - name: Upload deps
+      become: False
+      copy:
+        src: ../resources/deps/
+        dest: ~/deps
+        owner: ubuntu
+        group: ubuntu
+        mode: 0744
+
+
+- hosts: master
+  become: True
+  tasks:
+    - name: Create ubuntu user in cluster
+      user:
+        name: ubuntu
+        comment: hadoop client user to submit jobs
+        group: hadoop
+
+

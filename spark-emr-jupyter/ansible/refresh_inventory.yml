@@ -1,0 +1,13 @@
+---
+- hosts: local
+  gather_facts: False
+
+  tasks:
+    - name: Refresh Ansible Host Inventory
+      template: src=./templates/host-inventory.j2 dest=./ansible-host-inventory
+
+    - name: Refresh HDFS url
+      lineinfile:
+        path: group_vars/all.yml
+        regexp: '^gv_hdfs_url:.+'
+        line: 'gv_hdfs_url: "{{ hdfs_url }}"'

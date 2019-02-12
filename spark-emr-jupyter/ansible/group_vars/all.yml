@@ -1,0 +1,8 @@
+
+
+# Zookeeper Variables
+gv_zk_ensamble: ":2181"
+
+# HDFS Variables
+gv_hdfs_url: "hdfs://"
+gv_hdfs_drill_root_path: "/data"
