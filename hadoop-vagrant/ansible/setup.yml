@@ -1,0 +1,82 @@
+---
+- hosts: local
+  gather_facts: False
+  tasks:
+    - name: Get Hadoop
+      get_url:
+        url: https://www-us.apache.org/dist/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
+        dest: resources/
+        mode: 0776
+
+- hosts: hadoop
+  gather_facts: False
+  become: True
+  vars:
+    # Generate passworkd hash with: ansible all -m debug -a "msg={{ 'hduser' | password_hash('sha512', 'hduser')}}"
+    var_hduser_psw: $6$hduser$sn14ciKozJ/aOrye3jpD1uQoF.OXh/2stFyaVvx/GkDH76tEg3h013W6.nKyCwVggG3/M3NXcJpQkODUlnm7B.
+  tasks:
+    - name: Ensure Java 1.8 Devel is installed
+      yum: name=java-1.8.0-openjdk-devel state=present update_cache=yes
+
+    - name: Ensure hadoop group exists
+      group: name=hadoop state=present
+
+    - name: Ensure hduser exists and is added to the hadoop group
+      user: 
+        name: hduser
+        groups: hadoop
+        state: present
+        password: {{ var_hduser_psw }}
+        generate_ssh_key: yes
+        ssh_key_bits: 2048
+        ssh_key_file: .ssh/id_rsa
+
+    - name: Ensure hduser has sudo with passwordless privileges
+      lineinfile: 
+        path: /etc/sudoers.d/hduser
+        create: yes
+        state: present
+        line: "%hduser ALL=(ALL) NOPASSWD: ALL"
+
+    - name: Get public key from hosts
+      fetch: 
+        src: "/home/hduser/.ssh/id_rsa.pub"
+        dest: "/keys"
+
+    - name: Distribute public keys are distributed among cluster members
+      authorized_key:
+        user: hduser
+        state: present
+        key: "{{ item }}"
+      #with_items: "{{ '/keys/hadoop1/home/hduser/.ssh/id_rsa.pub' | fileglob }}"
+      with_file:
+        - /keys/hadoop1/home/hduser/.ssh/id_rsa.pub
+        - /keys/hadoop2/home/hduser/.ssh/id_rsa.pub
+    
+    - name: Ensure JAVA_HOME environment variable is setup
+      lineinfile:
+        path: /home/hduser/.bashrc
+        create: yes
+        state: present
+        line: "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk"
+
+    - name: Inflate Hadoop on /usr/local
+      unarchive:
+        src: resources/hadoop-3.2.0.tar.gz
+        dest: /usr/local
+        owner: "hduser:hduser"
+
+    - name: Ensure symlink to hadoop
+      file: 
+        src: /usr/local/hadoop-3.2.0
+        dest: /usr/local/hadoop
+        state: link
+        owner: "hduser:hduser"
+
+    - name: Ensure HADOOP_HOME environment variable is setup
+      lineinfile:
+        path: /home/hduser/.bashrc
+        create: yes
+        state: present
+        line: "export HADOOP_HOME=/usr/local/hadoop"
+

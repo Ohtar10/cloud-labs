@@ -1,0 +1,26 @@
+[hadoop]
+hadoop1
+hadoop2
+hadoop3
+hadoop4
+hadoop5
+
+[datanodes]
+hadoop3
+hadoop4
+hadoop5
+
+[namenode]
+hadoop1
+
+[snamenode]
+hadoop2
+
+[yarn]
+hadoop1
+
+[mrjobhistory]
+hadoop2
+
+[local]
+localhost		ansible_connection=local

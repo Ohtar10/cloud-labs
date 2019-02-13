@@ -1,0 +1,52 @@
+# Vagrant fiile configuration for spinning up hadoop cluster
+# for training.
+# Mainainer: Luis Eduardo Ferro Diez <luisedof10@gmail.com>
+# OS: Centos:7
+# Hadoop: 2.8.1
+Vagrant.configure("2") do |config|
+	config.hostmanager.enabled = true
+	config.vm.box = "centos/7"
+
+	config.vm.define "control", primary: true do |control|
+		control.vm.hostname = "control"
+		control.vm.network "private_network", ip: "192.168.1.99"
+
+		control.vm.synced_folder "../ansible", "/ansible-playbooks/"
+		control.vm.synced_folder "../keys", "/keys/"
+		control.vm.synced_folder "../ansible/resources", "/resources/"
+		control.vm.provision :shell, path: "../scripts/control_bootstrap.sh"
+
+		control.vm.provider :virtualbox do |v|
+		    v.customize ["modifyvm", :id, "--name", "control"]
+		end
+
+	end
+
+	# hadoop Machines
+	begin
+	# Change the number of iterations according to the amount of machines to use
+		(1..5).each do |i|
+			config.vm.define "hadoop#{i}" do |hadoop|		
+				hadoop.vm.hostname = "hadoop#{i}"
+
+                # HDFS web console
+				hadoop.vm.network "forwarded_port", guest: 50070, host: "5007#{i}"
+				# Resource Manager
+				hadoop.vm.network "forwarded_port", guest: 8088, host: "808#{i}"
+				# Map Reduce Job History Server Web App
+				hadoop.vm.network "forwarded_port", guest: 19888, host: "1988#{i}"
+
+				hadoop.vm.network "private_network", ip: "192.168.1.10#{i}"
+
+				hadoop.vm.synced_folder "../keys", "/keys/"
+				hadoop.vm.provision :shell, inline: 'cat /keys/control.pub >> /home/vagrant/.ssh/authorized_keys'
+
+				hadoop.vm.provider :virtualbox do |v|
+					v.customize ["modifyvm", :id, "--memory", 1024]
+					v.customize ["modifyvm", :id, "--name", "hadoop#{i}"]
+				end
+			end
+		end
+	end
+
+end
