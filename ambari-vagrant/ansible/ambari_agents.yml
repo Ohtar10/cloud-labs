@@ -1,0 +1,21 @@
+---
+- hosts: slaves
+  gather_facts: False
+  become: True
+  vars:
+    ambari_server_host: ambarimaster
+  tasks:
+    - name: Prepare ambari repo
+      get_url: url=http://public-repo-1.hortonworks.com/ambari/ubuntu16/2.x/updates/2.5.1.0/ambari.list dest=/etc/apt/sources.list.d/ambari.list 
+
+    - name: Install ambari
+      apt: name=ambari-agent state=present update_cache=yes allow_unauthenticated=yes
+
+    - name: Setup ambari - directories
+      file: path=/var/lib/ambari-agent/data state=directory
+
+    - name: Register Ambari Server to this Agent
+      lineinfile: path=/etc/ambari-agent/conf/ambari-agent.ini regexp="^hostname=.*" line="hostname={{ ambari_server_host }}"
+
+    - name: Ensure ambari-agent is up
+      service: name=ambari-agent state=started enabled=yes

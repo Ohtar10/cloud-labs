@@ -1,0 +1,53 @@
+# Vagrant fiile configuration for spinning up hadoop cluster
+# for training.
+# Mainainer: Luis Eduardo Ferro Diez <lferrod@psl.com.co>
+# OS: Ubuntu:16.04 LTS
+# Ambari: 
+Vagrant.configure("2") do |config|
+	config.hostmanager.enabled = true
+	config.vm.box = "ubuntu/xenial64"
+
+	config.vm.define "ambarimaster", primary: true do |ambarimaster|
+		ambarimaster.vm.hostname = "ambarimaster"
+		ambarimaster.vm.network "private_network", ip: "192.168.1.99"
+
+		ambarimaster.vm.network "forwarded_port", guest: 8080, host: "9090"
+
+		ambarimaster.vm.synced_folder "../ansible", "/ansible-playbooks/"
+		ambarimaster.vm.synced_folder "../keys", "/keys/"
+		ambarimaster.vm.provision :shell, path: "../scripts/bootstrap.sh"
+
+		ambarimaster.vm.provider :virtualbox do |v|
+		    v.customize ["modifyvm", :id, "--name", "ambarimaster"]
+		end
+
+	end
+
+	# ambariagent Machines
+	begin
+	# Change the number of iterations according to the amount of machines to use
+		(1..3).each do |i|
+			config.vm.define "ambariagent#{i}" do |ambariagent|		
+				ambariagent.vm.hostname = "ambariagent#{i}"
+
+                # HDFS web console
+				ambariagent.vm.network "forwarded_port", guest: 50070, host: "5007#{i}"
+				# Resource Manager
+				ambariagent.vm.network "forwarded_port", guest: 8088, host: "808#{i}"
+				# Map Reduce Job History Server Web App
+				ambariagent.vm.network "forwarded_port", guest: 19888, host: "1988#{i}"
+
+				ambariagent.vm.network "private_network", ip: "192.168.1.10#{i}"
+
+				#ambariagent.vm.synced_folder "../keys", "/keys/"
+				#ambariagent.vm.provision :shell, inline: 'cat /keys/control.pub >> /home/vagrant/.ssh/authorized_keys'
+
+				ambariagent.vm.provider :virtualbox do |v|
+					v.customize ["modifyvm", :id, "--memory", 2048]
+					v.customize ["modifyvm", :id, "--name", "ambariagent#{i}"]
+				end
+			end
+		end
+	end
+
+end

@@ -1,0 +1,26 @@
+[cluster]
+node1
+node2
+node3
+node4
+node5
+
+[datanodes]
+node3
+node4
+node5
+
+[namenode]
+node1
+
+[snamenode]
+node2
+
+[yarn]
+node1
+
+[mrjobhistory]
+node2
+
+[local]
+localhost		ansible_connection=local

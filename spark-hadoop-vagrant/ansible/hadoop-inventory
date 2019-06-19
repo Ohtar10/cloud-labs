@@ -1,0 +1,6 @@
+[hadoop]
+node1
+node2
+
+[local]
+localhost		ansible_connection=local

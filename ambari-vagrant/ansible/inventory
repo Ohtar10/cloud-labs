@@ -1,0 +1,13 @@
+[hadoop]
+localhost	ansible_connection=local
+ambariagent1	ansible_ssh_private_key_file=/keys/ambariagent1	ansible_user=ubuntu
+ambariagent2	ansible_ssh_private_key_file=/keys/ambariagent2	ansible_user=ubuntu
+ambariagent3	ansible_ssh_private_key_file=/keys/ambariagent3	ansible_user=ubuntu
+
+[masters]
+localhost	ansible_connection=local
+
+[slaves]
+ambariagent1	ansible_ssh_private_key_file=/keys/ambariagent1	ansible_user=ubuntu
+ambariagent2	ansible_ssh_private_key_file=/keys/ambariagent2	ansible_user=ubuntu
+ambariagent3	ansible_ssh_private_key_file=/keys/ambariagent3	ansible_user=ubuntu

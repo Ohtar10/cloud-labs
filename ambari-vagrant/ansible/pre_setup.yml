@@ -1,0 +1,33 @@
+---
+# target all host groups
+- hosts: all
+  gather_facts: False
+  become: True
+  tasks:
+    - name: Install python 2
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      changed_when: False
+
+    - name: Ensure Ambari agent dir is present on hosts
+      file: path=/var/lib/ambari-agent/data state=directory
+
+    - name: Install tools
+      apt: name={{item}} state=present update_cache=yes
+      with_items:
+        - python-pip
+        - ntp
+        - sysv-rc-conf
+        - apt-transport-https 
+        - ca-certificates 
+        - curl 
+        - software-properties-common
+
+    - name: Ensure ntp is up
+      service: name=ntp state=started enabled=yes
+
+    - name: Ensure ufw is down
+      service: name=ufw state=stopped enabled=no
+
+    - name: Disable Transparent Huge Pages
+      shell: 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+

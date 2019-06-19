@@ -15,6 +15,11 @@ spark-emr-jupyter/keys/spark-emr.pub
 # Hadoop files
 hadoop-vagrant/ansible/resources/hadoop-2.8.1.tar.gz
 hadoop-vagrant/ansible/resources/hadoop-3.2.0.tar.gz
+spark-hadoop-vagrant/ansible/resources/hadoop-2.8.1.tar.gz
+spark-hadoop-vagrant/ansible/resources/hadoop-3.2.0.tar.gz
 
 # Ansible retries
 *.retry
+
+# vagrant files
+.vagrant
