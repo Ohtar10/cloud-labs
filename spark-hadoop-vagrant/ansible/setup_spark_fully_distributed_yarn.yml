@@ -1,0 +1,56 @@
+---
+- hosts: local
+  gather_facts: False
+  tasks:
+    - name: Get Spark
+      get_url: 
+        url: https://www-us.apache.org/dist/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
+        dest: resources/
+        mode: 0776
+
+- hosts: cluster
+  gather_facts: False
+  become: True
+  tasks:
+    - name: Inflate Spark on /usr/local
+      unarchive: 
+        src: resources/spark-2.4.3-bin-hadoop2.7.tgz
+        dest: /usr/local
+        owner: hduser
+        group: hduser
+    
+    - name: Ensure symlink to spark
+      file:
+        src: /usr/local/spark-2.4.3-bin-hadoop2.7
+        dest: /usr/local/spark
+        state: link
+        owner: hduser
+        group: hduser
+    
+    - name: Ensure SPARK_HOME environment variable is set
+      lineinfile:
+        path: /home/hduser/.bashrc
+        create: yes
+        state: present
+        line: "export SPARK_HOME=/usr/local/spark"
+
+    - name: Ensure HADOOP_CONF_DIR environment variable is set
+      lineinfile:
+        path: /usr/local/spark/conf/spark-env.sh
+        create: yes
+        state: present
+        line: "export HADOOP_CONF_DIR=/usr/local/hadoop/etc/hadoop"
+
+    - name: Ensure YARN_CONF_DIR environment variable is set
+      lineinfile:
+        path: /usr/local/spark/conf/spark-env.sh
+        create: yes
+        state: present
+        line: "export YARN_CONF_DIR=/usr/local/hadoop/etc/hadoop"
+
+    - name: Ensure SPARK_HOME is added to PATH
+      lineinfile:
+        path: /home/hduser/.bashrc
+        create: yes
+        state: present
+        line: "export PATH=$PATH:$SPARK_HOME/bin"

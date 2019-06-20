@@ -106,7 +106,7 @@
         - yarn-site.xml
         - workers
 
-    - name: Ensure HADOOP_HOME environment variable is setup
+    - name: Ensure HADOOP_HOME environment variable is set
       lineinfile:
         path: /home/hduser/.bashrc
         create: yes
