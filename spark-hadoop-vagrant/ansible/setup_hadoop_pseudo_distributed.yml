@@ -54,8 +54,7 @@
         key: "{{ item }}"
       #with_items: "{{ '/keys/*/home/hduser/.ssh/id_rsa.pub' | fileglob }}"
       with_file:
-        - /keys/hadoop1/home/hduser/.ssh/id_rsa.pub
-      #  - /keys/hadoop2/home/hduser/.ssh/id_rsa.pub
+        - /keys/node1/home/hduser/.ssh/id_rsa.pub
     
     - name: Ensure JAVA_HOME environment variable is setup
       lineinfile:
@@ -125,7 +124,7 @@
         - hdfs-site.xml
         - mapred-site.xml
         - yarn-site.xml
-        - slaves
+        - workers
 
     # Final preparations to bring up the pseudo distributed mode
     - name: Format the namenode

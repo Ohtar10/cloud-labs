@@ -19,6 +19,6 @@
 <configuration>
     <property>
         <name>fs.default.name</name>
-        <value>hdfs://hadoop1:8020</value>
+        <value>hdfs://node1:8020</value>
     </property>
 </configuration>

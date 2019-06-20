@@ -1,0 +1,1 @@
+This directory is just a sharing poing between the machines and the host
