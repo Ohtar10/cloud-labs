@@ -1,10 +1,12 @@
 ---
 - hosts: local
   gather_facts: False
+  vars:
+    var_hadoop_version: "3.2.0"
   tasks:
     - name: Get Hadoop
       get_url:
-        url: https://www-us.apache.org/dist/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
+        url: "https://www-us.apache.org/dist/hadoop/common/hadoop-{{ var_hadoop_version }}/hadoop-{{ var_hadoop_version }}.tar.gz"
         dest: resources/
         mode: 0776
 
@@ -12,8 +14,14 @@
   gather_facts: False
   become: True
   vars:
+    var_hadoop_version: "3.2.0"
+    var_apps_home: "/usr/local"
+    var_java_home: "/usr/lib/jvm/java-1.8.0-openjdk"
+    var_hadoop_home: "{{ var_apps_home }}/hadoop"
+    var_create_user: True
+    var_user_name: "hduser"
     # Generate passworkd hash with: ansible all -m debug -a "msg={{ 'hduser' | password_hash('sha512', 'hduser')}}"
-    var_hduser_psw: $6$hduser$sn14ciKozJ/aOrye3jpD1uQoF.OXh/2stFyaVvx/GkDH76tEg3h013W6.nKyCwVggG3/M3NXcJpQkODUlnm7B.
+    var_user_psw: $6$hduser$sn14ciKozJ/aOrye3jpD1uQoF.OXh/2stFyaVvx/GkDH76tEg3h013W6.nKyCwVggG3/M3NXcJpQkODUlnm7B.
   tasks:
     - name: Ensure Java 1.8 Devel and tools are installed
       yum: 
@@ -28,77 +36,80 @@
     - name: Ensure hadoop group exists
       group: name=hadoop state=present
 
-    - name: Ensure hduser exists and is added to the hadoop group
+    - name: Ensure {{ var_user_name }} exists and is added to the hadoop group
       user: 
-        name: hduser
+        name: "{{ var_user_name }}"
         groups: hadoop
         state: present
-        password: "{{ var_hduser_psw }}"
+        password: "{{ var_user_psw }}"
         generate_ssh_key: yes
         ssh_key_bits: 2048
         ssh_key_file: .ssh/id_rsa
+      when: {{ var_create_user }}
 
     # Ensure non strict host key checking as might interfere with automated startup
     - name: Ensure no Strict Host Key Checking
       copy:
         src: resources/configs/ssh_config
-        dest: /home/hduser/.ssh/config
-        owner: hduser
-        group: hduser
+        dest: "/home/{{ var_user_name }}/.ssh/config"
+        owner: "{{ var_user_name }}"
+        group: "{{ var_user_name }}"
+      when: {{ var_create_user }}
 
-    - name: Ensure hduser has sudo with passwordless privileges
+    - name: Ensure {{ var_user_name }} has sudo with passwordless privileges
       lineinfile: 
-        path: /etc/sudoers.d/hduser
+        path: "/etc/sudoers.d/{{ var_user_name }}"
         create: yes
         state: present
-        line: "%hduser ALL=(ALL) NOPASSWD: ALL"
+        line: "%{{ var_user_name }} ALL=(ALL) NOPASSWD: ALL"
+      when: {{ var_create_user }}
 
     - name: Get public key from hosts
       fetch: 
-        src: "/home/hduser/.ssh/id_rsa.pub"
+        src: "/home/{{ var_user_name }}/.ssh/id_rsa.pub"
         dest: "/keys"
 
     - name: Distribute public keys are distributed among cluster members
       authorized_key:
-        user: hduser
+        user: "{{ var_user_name }}"
         state: present
         key: "{{ item }}"
       #with_items: "{{ '/keys/*/home/hduser/.ssh/id_rsa.pub' | fileglob }}"
       with_file:
-        - /keys/node1/home/hduser/.ssh/id_rsa.pub
-        - /keys/node2/home/hduser/.ssh/id_rsa.pub
-        - /keys/node3/home/hduser/.ssh/id_rsa.pub
-        - /keys/node4/home/hduser/.ssh/id_rsa.pub
-        - /keys/node5/home/hduser/.ssh/id_rsa.pub
+        - "/keys/node1/home/{{ var_user_name }}/.ssh/id_rsa.pub"
+        - "/keys/node2/home/{{ var_user_name }}/.ssh/id_rsa.pub"
+        - "/keys/node3/home/{{ var_user_name }}/.ssh/id_rsa.pub"
+        - "/keys/node4/home/{{ var_user_name }}/.ssh/id_rsa.pub"
+        - "/keys/node5/home/{{ var_user_name }}/.ssh/id_rsa.pub"
     
     - name: Ensure JAVA_HOME environment variable is setup
       lineinfile:
-        path: /home/hduser/.bashrc
+        path: "/home/{{ var_user_name }}/.bashrc"
         create: yes
         state: present
-        line: "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk"
+        line: "export JAVA_HOME={{ var_java_home }}"
 
-    - name: Inflate Hadoop on /usr/local
+    - name: Inflate Hadoop on {{ var_apps_home }}
       unarchive:
-        src: resources/hadoop-3.2.0.tar.gz
-        dest: /usr/local/
-        owner: "hduser"
-        group: "hduser"
+        src: "resources/hadoop-{{ var_hadoop_version }}.tar.gz"
+        dest: "{{ var_apps_home }}"
+        owner: "{{ var_user_name }}"
+        group: "{{ var_user_name }}"
 
     - name: Ensure symlink to hadoop
       file: 
-        src: /usr/local/hadoop-3.2.0
-        dest: /usr/local/hadoop
+        src: "/usr/local/hadoop-{{ var_hadoop_version }}"
+        dest: "{{ var_hadoop_home }}"
         state: link
-        owner: "hduser"
-        group: "hduser"
+        owner: "{{ var_user_name }}"
+        group: "{{ var_user_name }}"
 
     - name: Copy Hadoop configuration files
       copy:
         src: resources/configs/fully-distributed/{{ item }}
-        dest: /usr/local/hadoop/etc/hadoop
-        owner: "hduser"
-        group: "hduser"
+        dest: "{{ var_hadoop_home }}/etc/hadoop"
+        owner: "{{ var_user_name }}"
+        group: "{{ var_user_name }}"
       with_items:
         - core-site.xml
         - hdfs-site.xml
@@ -108,14 +119,14 @@
 
     - name: Ensure HADOOP_HOME environment variable is set
       lineinfile:
-        path: /home/hduser/.bashrc
+        path: "/home/{{ var_user_name }}/.bashrc"
         create: yes
         state: present
-        line: "export HADOOP_HOME=/usr/local/hadoop"
+        line: "export HADOOP_HOME={{ var_hadoop_home }}"
 
-    - name: Ensure JAVA_HOME and HADOOP_HOME is added to PATH for hduser
+    - name: Ensure JAVA_HOME and HADOOP_HOME is added to PATH for {{ var_user_name }}
       lineinfile:
-        path: /home/hduser/.bashrc
+        path: "/home/{{ var_user_name }}/.bashrc"
         create: yes
         state: present
         line: "export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin"
@@ -131,7 +142,7 @@
     # Configuration files on hadoop
     - name: Ensure JAVA_HOME variable on *-env.sh is set correctly
       lineinfile:
-        path: /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+        path: "{{ var_hadoop_home }}/etc/hadoop/hadoop-env.sh"
         regexp: '^[#\s]{0,2}export JAVA_HOME=.+'
         line: 'export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk'
       with_items:
@@ -141,7 +152,7 @@
 
     - name: Ensure HEAP_SIZE variable on hadoop-env.sh is set to 200
       lineinfile:
-        path: /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+        path: "{{ var_hadoop_home }}/etc/hadoop/hadoop-env.sh"
         regexp: '^#export HADOOP_HEAPSIZE='
         line: 'export HADOOP_HEAPSIZE=200'
 
@@ -160,20 +171,20 @@
     - name: Format the namenode
       shell: bin/hdfs namenode -format playground-cluster
       args:
-        chdir: /usr/local/hadoop
-        creates: /home/hduser/namenode/current/fsimage_0000000000000000000
+        chdir: "{{ var_hadoop_home }}"
+        creates: "/home/{{ var_user_name }}/namenode/current/fsimage_0000000000000000000"
       become: yes
-      become_user: hduser
+      become_user: "{{ var_user_name }}"
 
     # In case of failing to connect to namenode because it is not started and need to be
     # Restarted again, command sbin/hadoop-daemon.sh start namenode needs to be executed
     - name: Ensure Namenode is started
       shell: sbin/start-dfs.sh
       args:
-        chdir: /usr/local/hadoop
-        creates: /tmp/hadoop-hduser/hadoop-hduser-namenode.pid
+        chdir: "{{ var_hadoop_home }}"
+        creates: "/tmp/hadoop-{{ var_user_name }}/hadoop-{{ var_user_name }}-namenode.pid"
       become: yes
-      become_user: hduser
+      become_user: "{{ var_user_name }}"
 
 - hosts: yarn
   gather_facts: False
@@ -182,10 +193,10 @@
     - name: Ensure YARN daemons are started
       shell: sbin/start-yarn.sh
       args:
-        chdir: /usr/local/hadoop
-        creates: /tmp/hadoop-hduser/yarn-hduser-nodemanager.pid
+        chdir: "{{ var_hadoop_home }}"
+        creates: "/tmp/hadoop-{{ var_user_name }}/yarn-{{ var_user_name }}-nodemanager.pid"
       become: yes
-      become_user: hduser
+      become_user: "{{ var_user_name }}"
 
 - hosts: mrjobhistory
   gather_facts: False
@@ -194,8 +205,8 @@
     - name: Ensure Job History Server daemons are started
       shell: sbin/mr-jobhistory-daemon.sh --config /usr/local/hadoop/etc/hadoop/ start historyserver
       args:
-        chdir: /usr/local/hadoop
-        creates: /tmp/hadoop-hduser/yarn-hduser-nodemanager.pid
+        chdir: "{{ var_hadoop_home }}"
+        creates: "/tmp/hadoop-{{ var_user_name }}/yarn-{{ var_user_name }}-nodemanager.pid"
       become: yes
-      become_user: hduser
+      become_user: "{{ var_user_name }}"
 

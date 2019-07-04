@@ -1,0 +1,39 @@
+---
+- hosts: namenode
+  gather_facts: True
+  vars:
+    var_spark_version: "2.4.3"
+    var_spark_package: "{{ var_spark_version }}-bin-hadoop2.7"
+    var_zeppelin_version: "0.8.1"
+    var_apps_home: "/usr/local"
+    var_zeppelin_home: "{{ var_apps_home }}/zeppelin"
+    var_user_name: "{{ lookup('env', 'USER') }}"
+  tasks:
+    - name: Get Zeppelin
+      get_url: 
+        url: "https://www-us.apache.org/dist/zeppelin/zeppelin-{{ var_zeppelin_version }}/zeppelin-{{ var_zeppelin_version }}-bin-all.tgz"
+        dest: resources/
+        mode: 0776
+
+    - name: Inflate zeppelin on {{ var_apps_home }}
+      unarchive: 
+        src: resources/zeppelin-{{ var_zeppelin_version }}-bin-all.tgz
+        dest: "{{ var_apps_home }}"
+        owner: "{{ var_user_name }}"
+        group: "{{ var_user_name }}"
+      become: True
+
+    - name: Ensure symlink to zeppelin
+
+    - name: Copy interpreter properties
+      copy:
+        src: resources/configs/interpreter.json
+        dest: ""
+        owner: "{{ var_user_name }}"
+        group: "{{ var_user_name }}"
+
+    - name: Start Zeppelin
+      shell: bin/zeppelin-daemon.sh start
+      args:
+        chdir: "{{ var_zeppelin_home }}"
+        creates: "{{ var_zeppelin_home }}/run/zeppelin-{{ var_user_name }}-{{ ansible_host }}.pid"
