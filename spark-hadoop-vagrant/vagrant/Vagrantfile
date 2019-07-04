@@ -18,6 +18,9 @@ Vagrant.configure("2") do |config|
 		control.vm.synced_folder "../shared/", "/shared/"
 		control.vm.provision :shell, path: "../scripts/control_bootstrap.sh"
 
+		# expose port 8080
+		node.vm.network "forwarded_port", guest: 8080, host: "8080"
+
 		control.vm.provider :virtualbox do |v|
 		    v.customize ["modifyvm", :id, "--name", "control"]
 		end
