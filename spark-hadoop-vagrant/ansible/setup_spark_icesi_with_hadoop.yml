@@ -1,53 +1,45 @@
 ---
 - hosts: local
   gather_facts: False
-  vars:
-    var_spark_version: "2.4.4"
-    var_spark_package: "{{ var_spark_version }}-bin-hadoop2.7"
   tasks:
     - name: Get Spark
       get_url: 
-        url: "https://www-us.apache.org/dist/spark/spark-{{ var_spark_version }}/spark-{{ var_spark_package }}.tgz"
+        url: https://www-us.apache.org/dist/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
         dest: resources/
         mode: 0776
 
 - hosts: cluster
-  gather_facts: False
-  become: False
+  gather_facts: True
   vars:
-    var_spark_version: "2.4.4"
-    var_spark_package: "{{ var_spark_version }}-bin-hadoop2.7"
-    var_apps_home: "/usr/local"
-    var_java_home: "/usr/lib/jvm/java-1.8.0-openjdk"
-    var_hadoop_home: "{{ var_apps_home }}/hadoop"
-    var_spark_home: "{{ var_apps_home }}/spark"
-    var_user_name: "hduser"
+    var_software_path: "/home/{{ lookup('env','USER') }}/software"
+    var_hadoop_home: "{{ var_software_path }}/hadoop"
+    var_spark_home: "{{ var_software_path }}/spark"
   tasks:
-    - name: Inflate Spark on apps home
+    - name: Inflate Spark on remote hosts
       unarchive: 
-        src: resources/spark-{{ var_spark_package }}.tgz
-        dest: "{{ var_apps_home }}"
-        owner: "{{ var_user_name }}"
-        group: "{{ var_user_name }}"
+        src: resources/spark-2.4.3-bin-hadoop2.7.tgz
+        dest: "{{ var_software_path }}"
+        owner: "{{ lookup('env', 'USER') }}"
+        group: "{{ lookup('env', 'USER') }}"
     
     - name: Ensure symlink to spark
       file:
-        src: "{{ var_apps_home }}/spark-{{ var_spark_package }}"
+        src: "{{ var_software_path }}/spark-2.4.3-bin-hadoop2.7"
         dest: "{{ var_spark_home }}"
         state: link
-        owner: "{{ var_user_name }}"
-        group: "{{ var_user_name }}"
+        owner: "{{ lookup('env', 'USER') }}"
+        group: "{{ lookup('env', 'USER') }}"
     
     - name: Ensure SPARK_HOME environment variable is set
       lineinfile:
-        path: "/home/{{ var_user_name }}/.bashrc"
+        path: "/home/{{ lookup('env', 'USER') }}/.bashrc"
         create: yes
         state: present
         line: "export SPARK_HOME={{ var_spark_home }}"
 
     - name: Ensure HADOOP_CONF_DIR environment variable is set
       lineinfile:
-        path: "{{ var_spark_home }}conf/spark-env.sh"
+        path: "{{ var_spark_home }}/conf/spark-env.sh"
         create: yes
         state: present
         line: "export HADOOP_CONF_DIR={{ var_hadoop_home }}/etc/hadoop"
@@ -61,7 +53,7 @@
 
     - name: Ensure SPARK_HOME is added to PATH
       lineinfile:
-        path: "/home/{{ var_user_name }}/.bashrc"
+        path: "/home/{{ lookup('env', 'USER') }}/.bashrc"
         create: yes
         state: present
         line: "export PATH=$PATH:$SPARK_HOME/bin"

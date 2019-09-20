@@ -1,0 +1,33 @@
+[cluster]
+localhost		ansible_connection=local
+grid4         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid5         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid9         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid10         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid13         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid12         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid14         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+
+[datanodes]
+grid4         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid5         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid9         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid10         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid13         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid12         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+grid14         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+
+[namenode]
+localhost		ansible_connection=local
+
+[snamenode]
+grid4         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+
+[yarn]
+localhost		ansible_connection=local
+
+[mrjobhistory]
+grid4         ansible_ssh_private_key_file=/home/LFERRO/.ssh/id_rsa           ansible_user=LFERRO
+
+[local]
+localhost		ansible_connection=local

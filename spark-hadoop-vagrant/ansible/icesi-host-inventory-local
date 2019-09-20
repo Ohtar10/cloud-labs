@@ -1,0 +1,5 @@
+[cluster]
+localhost		ansible_connection=local
+
+[local]
+localhost		ansible_connection=local
