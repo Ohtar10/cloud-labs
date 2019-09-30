@@ -1,0 +1,15 @@
+version: "3"
+services:
+  livy:
+    image: ohtar10/livy:0.6.0-incubating
+     build:
+       context: ./livy/
+    container_name: livy
+    ports:
+      - "8998:8998"
+    networks:
+      - spark-livy-net
+
+networks:
+  spark-livy-net:
+    driver: bridge
