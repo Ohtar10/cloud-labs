@@ -34,19 +34,22 @@ Vagrant.configure("2") do |config|
 				memory = 1024
 				# Port forwarding rules
 
+				# Explicit port forwarding is uncessesary if services are added via 
+				# Vbox internal IP addresses
+
                 # HDFS web console
-				node.vm.network "forwarded_port", guest: 50070, host: "5007#{i}"
+				#node.vm.network "forwarded_port", guest: 50070, host: "5007#{i}"
 				# Resource Manager
-				node.vm.network "forwarded_port", guest: 8088, host: "808#{i}"
+				#node.vm.network "forwarded_port", guest: 8088, host: "808#{i}"
 				# Map Reduce Job History Server Web App
-				node.vm.network "forwarded_port", guest: 19888, host: "1988#{i}"
+				#node.vm.network "forwarded_port", guest: 19888, host: "1988#{i}"
 				# Spark UI
-				node.vm.network "forwarded_port", guest: 4040, host: "404#{i}"
+				#node.vm.network "forwarded_port", guest: 4040, host: "404#{i}"
 				
 				# Special configuration for the namenode, i.e., host 1
 				if i == 1 then
 					# Expose zeppelin's port 8080
-					node.vm.network "forwarded_port", guest: 8080, host: "8080"
+					# node.vm.network "forwarded_port", guest: 8080, host: "8080"
 					# Increase the memory of this host
 					memory = 2048
 				end

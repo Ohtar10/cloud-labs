@@ -3,7 +3,7 @@
 # Install Ansible
 sudo yum update -y 
 sudo yum install -y epel-release 
-sudo yum install -y ansible
+sudo yum install -y ansible nano unzip
 
 if [ ! -f "/home/vagrant/.ssh/id_rsa" ]; then
   ssh-keygen -t rsa -N "" -f /home/vagrant/.ssh/id_rsa

@@ -2,7 +2,7 @@
 - hosts: local
   gather_facts: False
   vars:
-    var_hadoop_version: "3.2.0"
+    var_hadoop_version: "3.2.1"
   tasks:
     - name: Get Hadoop
       get_url:
@@ -14,7 +14,7 @@
   gather_facts: False
   become: True
   vars:
-    var_hadoop_version: "3.2.0"
+    var_hadoop_version: "3.2.1"
     var_apps_home: "/usr/local"
     var_java_home: "/usr/lib/jvm/java-1.8.0-openjdk"
     var_hadoop_home: "{{ var_apps_home }}/hadoop"
@@ -45,7 +45,7 @@
         generate_ssh_key: yes
         ssh_key_bits: 2048
         ssh_key_file: .ssh/id_rsa
-      when: {{ var_create_user }}
+      when: "{{ var_create_user }}"
 
     # Ensure non strict host key checking as might interfere with automated startup
     - name: Ensure no Strict Host Key Checking
@@ -54,7 +54,7 @@
         dest: "/home/{{ var_user_name }}/.ssh/config"
         owner: "{{ var_user_name }}"
         group: "{{ var_user_name }}"
-      when: {{ var_create_user }}
+      when: "{{ var_create_user }}"
 
     - name: Ensure {{ var_user_name }} has sudo with passwordless privileges
       lineinfile: 
@@ -62,7 +62,7 @@
         create: yes
         state: present
         line: "%{{ var_user_name }} ALL=(ALL) NOPASSWD: ALL"
-      when: {{ var_create_user }}
+      when: "{{ var_create_user }}"
 
     - name: Get public key from hosts
       fetch: 
@@ -89,7 +89,7 @@
         state: present
         line: "export JAVA_HOME={{ var_java_home }}"
 
-    - name: Inflate Hadoop on {{ var_apps_home }}
+    - name: Inflate Hadoop on apps home
       unarchive:
         src: "resources/hadoop-{{ var_hadoop_version }}.tar.gz"
         dest: "{{ var_apps_home }}"
@@ -160,6 +160,10 @@
 - hosts: namenode
   gather_facts: False
   become: True
+  vars:
+    var_apps_home: "/usr/local"
+    var_hadoop_home: "{{ var_apps_home }}/hadoop"
+    var_user_name: "hduser"
   tasks:
     # This is important as avoids running the namenode using 127.0.0.1 which will prevent slaves nodes to connect
     - name: Ensure /etc/hosts maps for node1 are not pointing to 127.0.0.1 only
@@ -189,6 +193,10 @@
 - hosts: yarn
   gather_facts: False
   become: True
+  vars:
+    var_apps_home: "/usr/local"
+    var_hadoop_home: "{{ var_apps_home }}/hadoop"
+    var_user_name: "hduser"
   tasks:
     - name: Ensure YARN daemons are started
       shell: sbin/start-yarn.sh
@@ -201,6 +209,10 @@
 - hosts: mrjobhistory
   gather_facts: False
   become: True
+  vars:
+    var_apps_home: "/usr/local"
+    var_hadoop_home: "{{ var_apps_home }}/hadoop"
+    var_user_name: "hduser"
   tasks:
     - name: Ensure Job History Server daemons are started
       shell: sbin/mr-jobhistory-daemon.sh --config /usr/local/hadoop/etc/hadoop/ start historyserver

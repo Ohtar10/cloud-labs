@@ -2,7 +2,7 @@
 - hosts: local
   gather_facts: False
   vars:
-    var_spark_version: "2.4.3"
+    var_spark_version: "2.4.4"
     var_spark_package: "{{ var_spark_version }}-bin-hadoop2.7"
   tasks:
     - name: Get Spark
@@ -15,7 +15,7 @@
   gather_facts: False
   become: True
   vars:
-    var_spark_version: "2.4.3"
+    var_spark_version: "2.4.4"
     var_spark_package: "{{ var_spark_version }}-bin-hadoop2.7"
     var_apps_home: "/usr/local"
     var_java_home: "/usr/lib/jvm/java-1.8.0-openjdk"

@@ -9,3 +9,9 @@ I connects both by getting the EMR hadoop configuration files.
 
 ### hadoop-vagrant
 It's a full laboratory setting up a hadoop cluster from scratch on a set of vagrant machines. It has very basic configuration, no security and no tuning.
+
+### spark-hadoop-vagrant
+Based on hadoop-vagrant lab, includes installing Apache Spark in all the nodes
+
+### spark-livy-docker
+Contains the Dockerfiles for Apache Spark and Apache Livy docker images as well as a docker-compose file to deloy a local only solution
