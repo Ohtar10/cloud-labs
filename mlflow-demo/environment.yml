@@ -1,0 +1,11 @@
+name: mlflow-demo
+channels:
+    - defaults
+    - conda-forge
+dependencies:
+    - pip
+    - mlflow
+    - ipython
+    - ipykernel
+    - scikit-learn
+    - tensorboard

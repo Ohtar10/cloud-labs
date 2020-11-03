@@ -1,0 +1,53 @@
+version: "3.3"
+
+services: 
+    mlflow-server:
+        image: mlflow-demo:latest
+        build: ./mlflow
+        container_name: mlflow-server
+        environment: 
+            - LC_ALL=C.utf-8
+            - LANG=C.utf-8
+            - MLFLOW_ARTIFACT_PATH=/tmp/mlflow
+            - MLFLOW_STORE_PASS_FILE=/run/secrets/db_pass
+            - MLFLOW_STORE_USER_FILE=/run/secrets/db_user
+            - MLFLOW_STORE_HOST=mlflow-store
+        secrets:
+            - db_user
+            - db_pass
+        ports: 
+            - "5000:5000"
+        volumes: 
+            - "/tmp/mlflow:/tmp/mlflow"
+        networks: 
+            - mlflow-net
+        depends_on: 
+            - mlflow-store
+
+    mlflow-store:
+        image: postgres
+        container_name: mlflow-store
+        environment: 
+            - POSTGRES_PASSWORD_FILE=/run/secrets/db_pass
+            - POSTGRES_USER_FILE=/run/secrets/db_user
+            - POSTGRES_DB=mlflow-store
+        secrets:
+            - db_user
+            - db_pass
+        networks: 
+            - mlflow-net
+        volumes:
+            - mlflow-store-volume:/var/lib/postgresql/data
+
+networks: 
+    mlflow-net:
+        driver: bridge
+
+secrets:
+    db_user:
+        file: ./secrets/db-user.txt
+    db_pass:
+        file: ./secrets/db-pass.txt
+
+volumes:
+    mlflow-store-volume:
