@@ -1,0 +1,12 @@
+---
+configs:
+    box_image: 'ubuntu/focal64'
+    manager_name: 'manager'
+    manager_memory: 2048
+    manager_cpus: 2
+    worker_name: 'node'
+    workers: 2
+    worker_memory: 2048
+    worker_cpus: 4
+    docker:
+        test_channel: false

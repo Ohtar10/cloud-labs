@@ -1,0 +1,70 @@
+broker: rabbitmq
+
+gateway:
+    enabled: true
+    resources:
+        limits:
+            memory: 500Mi
+
+api:
+    enabled: true
+    resources:
+        limits:
+            memory: 500Mi
+
+streams:
+    enabled: true
+    resources:
+        limits:
+            memory: 500Mi
+
+init:
+    resources:
+        limits:
+            memory: 1000Mi
+
+
+sidecar:
+    resources:
+        limits:
+            memory: 500Mi
+
+postgresql:
+    persistence:
+      enabled: false
+    master:
+        affinity:
+            podAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: "node.role"
+                      operator: In
+                      values:
+                      - "persistent"
+                  topologyKey: "kubernetes.io/hostname"
+
+rabbitmq-ha:
+    enabled: true
+    affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: "node.role"
+                    operator: In
+                    values:
+                    - "persistent"
+                topologyKey: "kubernetes.io/hostname"
+
+
+securityContext:
+    enabled: true
+
+ui:
+    enabled: true
+    adminEnabled: true

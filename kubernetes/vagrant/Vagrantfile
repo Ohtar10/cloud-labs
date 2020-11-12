@@ -1,0 +1,72 @@
+require 'yaml'
+
+current_dir = File.dirname(File.expand_path(__FILE__))
+configs = YAML.load_file("#{current_dir}/config.yaml")
+vagrant_config = configs['configs']
+bootstrap_args = ""
+if vagrant_config['docker']['test_channel'] then
+  bootstrap_args += "--test-channel"
+end
+
+Vagrant.configure("2") do |config|
+  box_image = vagrant_config['box_image']
+  config.hostmanager.enabled = true
+  config.vm.box = box_image
+
+  # Manager node
+  config.vm.define "manager", primary: true do |manager|
+      manager_name = vagrant_config['manager_name']
+      manager_memory = vagrant_config['manager_memory']
+      manager_cpus = vagrant_config['manager_cpus']
+
+      manager.vm.hostname = manager_name
+      manager.vm.network "private_network", ip: "193.168.1.99"
+
+      manager.vm.synced_folder "../ansible", "/ansible-playbooks"
+      manager.vm.synced_folder "../resources", "/resources"
+      manager.vm.synced_folder "../shared", "/shared"
+
+      manager.vm.provision :ansible do |ansible|
+        ansible.playbook = "../ansible/master-playbook.yml" 
+        ansible.extra_vars = {
+          node_ip: "193.168.1.99"
+        }
+      end
+
+      manager.vm.provider :virtualbox do |v|
+          v.customize ["modifyvm", :id, "--name", manager_name]
+          v.memory = manager_memory
+          v.cpus = manager_cpus
+      end
+  end
+
+  # Cluster machines
+  begin
+    workers = vagrant_config['workers']
+    worker_name = vagrant_config['worker_name']
+    worker_memory = vagrant_config['worker_memory']
+    worker_cpus = vagrant_config['worker_cpus']
+
+    (1..workers).each do |i|
+        config.vm.define "#{worker_name}#{i}" do |node|
+            node.vm.hostname = "#{worker_name}#{i}"
+            node.vm.network "private_network", ip: "193.168.1.10#{i}"
+            node.vm.synced_folder "../resources", "/resources"
+            node.vm.synced_folder "../shared", "/shared"
+
+            node.vm.provision :ansible do |ansible|
+              ansible.playbook = "../ansible/node-playbook.yml" 
+              ansible.extra_vars = {
+                node_ip: "193.168.1.10#{i}"
+              }
+            end
+
+            node.vm.provider :virtualbox do |v|
+                v.customize ["modifyvm", :id, "--name", "#{worker_name}#{i}"]
+                v.memory = worker_memory
+                v.cpus = worker_cpus
+            end
+          end
+        end
+    end
+end

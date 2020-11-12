@@ -1,0 +1,149 @@
+# Reference https://kubernetes.io/blog/2019/03/15/kubernetes-setup-using-ansible-and-vagrant/
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Install packages that allow apt to be used over HTTPS
+    apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+    vars:
+        packages:
+            - apt-transport-https
+            - ca-certificates
+            - curl
+            - gnupg-agent
+            - software-properties-common
+            - python3
+            - python3-pip
+
+  - name: Add an apt signing key for docker
+    apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+  - name: Add apt repository for stable version
+    apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+
+  - name: Install docker and its dependencies
+    apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+    vars:
+        packages:
+            - docker-ce
+            - docker-ce-cli
+            - containerd.io
+    notify:
+        - docker status
+
+  - name: Add vagrant user to docker group
+    user:
+        name: vagrant
+        group: docker
+
+  - name: Remove swapfile from /etc/fstab
+    mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+    with_items:
+        - swap
+        - none
+
+  - name: Disable swap
+    command: swapoff -a
+    when: ansible_swaptotal_mb > 0
+
+  - name: Add an apt signing key for kubernetes
+    apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+  - name: Adding apt repository for kubernetes
+    apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+        filename: kubernetes.list
+    
+  - name: Install Kubernetes binaries
+    apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+    vars:
+        packages:
+            - kubelet
+            - kubeadm
+            - kubectl
+        
+  - name: Configure node ip
+    lineinfile:
+        path: /etc/default/kubelet
+        line: KUBELET_EXTRA_ARGS=--node-ip={{ node_ip }}
+        create: yes
+        state: present
+
+  - name: Restart kubelet
+    service:
+        name: kubelet
+        daemon_reload: yes
+        state: restarted
+
+  - name: Initialize the Kubernetes cluster using kubeadm
+    command: kubeadm init --apiserver-advertise-address={{ node_ip }} --apiserver-cert-extra-sans={{ node_ip }} --node-name k8s-master --pod-network-cidr=192.168.0.0/16
+
+  
+  - name: Setup kubeconfig for vagrant user 1
+    file:
+      path: /home/vagrant/.kube
+      state: directory
+      owner: vagrant
+      group: vagrant
+      mode: 0755
+
+  - name: Setup kubeconfig for vagrant user 2
+    copy:
+      src: /etc/kubernetes/admin.conf
+      remote_src: yes
+      dest: /home/vagrant/.kube/config
+      owner: vagrant
+      group: vagrant
+      mode: 0600
+
+  - name: Install calico pod network
+    become: false
+    command: kubectl create -f https://docs.projectcalico.org/manifests/calico.yaml
+
+  - name: Generate join command
+    command: kubeadm token create --print-join-command
+    register: join_command
+
+  - name: Copy join command to local file
+    copy:
+      content: "{{ join_command.stdout_lines[0] }}"
+      dest: /shared/join-command
+  
+  - name: Add apt key for helm
+    apt_key:
+      url: https://baltocdn.com/helm/signing.asc
+      state: present
+
+  - name: Add apt repository for helm
+    apt_repository:
+      repo: deb https://baltocdn.com/helm/stable/debian/ all main
+      state: present
+
+  - name: Install helm
+    apt:
+        name: helm
+        state: present
+        update_cache: yes
+    
+  handlers:
+    - name: docker status
+      service: name=docker state=started
