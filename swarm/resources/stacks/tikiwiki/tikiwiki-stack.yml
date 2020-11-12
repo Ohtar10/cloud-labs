@@ -1,0 +1,53 @@
+version: '3.8'
+
+# We can create the secrets separately too via
+# docker secret create psql_user psql_user.txt
+# or
+# echo "myDBpassWord" | docker secret create psql_pass -
+
+services:
+    tiki:
+        image: tikiwiki/tikiwiki:20.x
+        ports:
+            - "8080:5000"
+        secrets:
+            - db_user
+            - db_pass
+        environment:
+            - TIKI_DB_USER=tikiwiki-db-user
+            - TIKI_DB_PASS=tikiwiki-db-pass
+            - TIKI_DB_NAME=tikiwiki
+            - TIKI_DB_HOST=db
+        depends_on:
+            - db
+        deploy:
+            placement:
+                constraints: [node.role == worker]
+        
+    db:
+        image: mariadb
+        secrets:
+            - db_user
+            - db_pass
+            - db_root_pass
+        volumes:
+            - wiki-db-data:/var/lib/mysql
+        environment:
+            - MYSQL_PASSWORD_FILE=/run/secrets/db_pass
+            - MYSQL_USER_=/run/secrets/db_user
+            - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db_root_pass
+            - MYSQL_DATABASE=tikiwiki
+        deploy:
+            placement:
+                constraints: [node.role == worker]
+
+volumes:
+    wiki-db-data:
+
+secrets:
+    db_user:
+        file: ./db-user.txt
+    db_pass:
+        file: ./db-pass.txt
+    db_root_pass:
+        file: ./db-root-pass.txt

@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+    ping:
+        image: alpine
+        deploy:
+            mode: replicated
+            replicas: 3
+            restart_policy:
+                condition: on-failure
+            placement:
+                constraints: [node.role == worker]
+        command: ["ping", "-c", "5", "google.com"]

@@ -1,0 +1,66 @@
+require 'yaml'
+
+current_dir = File.dirname(File.expand_path(__FILE__))
+configs = YAML.load_file("#{current_dir}/config.yaml")
+vagrant_config = configs['configs']
+
+docker_channel = vagrant_config['docker']['install_channel']
+
+Vagrant.configure("2") do |config|
+  config.hostmanager.enabled = true
+  config.vm.box = "ubuntu/focal64"
+
+  # Manager node
+  config.vm.define "manager", primary: true do |manager|
+      manager_name = vagrant_config['manager_name']
+      manager_memory = vagrant_config['manager_memory']
+
+      manager.vm.hostname = manager_name
+      manager.vm.network "private_network", ip: "193.168.1.99"
+
+      manager.vm.synced_folder "../ansible", "/ansible-playbooks"
+      manager.vm.synced_folder "../resources", "/resources"
+      manager.vm.synced_folder "../shared", "/shared"
+
+      manager.vm.provision :ansible do |ansible| 
+        ansible.playbook = "../ansible/master-playbook.yml"
+        ansible.extra_vars = {
+          node_ip: "193.168.1.99",
+          docker_channel: docker_channel
+        }
+      end
+
+      manager.vm.provider :virtualbox do |v|
+          v.customize ["modifyvm", :id, "--name", manager_name]
+          v.customize ["modifyvm", :id, "--memory", manager_memory]
+      end
+  end
+
+  # Cluster machines
+  begin
+    workers = vagrant_config['workers']
+    worker_name = vagrant_config['worker_name']
+    worker_memory = vagrant_config['worker_memory']
+    (1..workers).each do |i|
+        config.vm.define "#{worker_name}#{i}" do |node|
+            node.vm.hostname = "#{worker_name}#{i}"
+            node.vm.network "private_network", ip: "193.168.1.10#{i}"
+            node.vm.synced_folder "../resources", "/resources"
+            node.vm.synced_folder "../shared", "/shared"
+
+            node.vm.provision :ansible do |ansible| 
+              ansible.playbook = "../ansible/node-playbook.yml"
+              ansible.extra_vars = {
+                node_ip: "193.168.1.99",
+                docker_channel: docker_channel
+              }
+            end
+
+            node.vm.provider :virtualbox do |v|
+                v.customize ["modifyvm", :id, "--memory", worker_memory]
+                v.customize ["modifyvm", :id, "--name", "#{worker_name}#{i}"]
+            end
+          end
+        end
+    end
+end

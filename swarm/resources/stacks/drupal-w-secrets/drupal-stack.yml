@@ -1,0 +1,49 @@
+version: '3.8'
+
+# We can create the secrets separately too via
+# docker secret create psql_user psql_user.txt
+# or
+# echo "myDBpassWord" | docker secret create psql_pass -
+
+services:
+    drupal:
+        image: drupal:latest
+        ports:
+            - "8080:80"
+        volumes:
+            - drupal-modules:/var/www/html/modules
+            - drupal-profiles:/var/www/html/profiles
+            - drupal-sites:/var/www/html/sites
+            - drupal-themes:/var/www/html/themes
+        depends_on:
+            - postgres
+        deploy:
+            placement:
+                constraints: [node.role == worker]
+        
+    postgres:
+        image: postgres:latest
+        secrets:
+            - psql_user
+            - psql_password
+        volumes:
+            - drupal-data:/var/lib/postgresql/data
+        environment:
+            - POSTGRES_PASSWORD_FILE=/run/secrets/psql_password
+            - POSTGRES_USER_FILE=/run/secrets/psql_user
+        deploy:
+            placement:
+                constraints: [node.role == worker]
+
+volumes:
+    drupal-data:
+    drupal-modules:
+    drupal-profiles:
+    drupal-sites:
+    drupal-themes:
+
+secrets:
+    psql_user:
+        file: ./psql_user.txt
+    psql_password:
+        file: ./psql_pass.txt

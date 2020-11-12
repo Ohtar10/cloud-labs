@@ -1,0 +1,9 @@
+---
+configs:
+    manager_name: 'manager'
+    manager_memory: 1024
+    worker_name: 'node'
+    workers: 3
+    worker_memory: 1024
+    docker:
+        install_channel: stable test

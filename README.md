@@ -15,3 +15,10 @@ Based on hadoop-vagrant lab, includes installing Apache Spark in all the nodes
 
 ### spark-livy-docker
 Contains the Dockerfiles for Apache Spark and Apache Livy docker images as well as a docker-compose file to deloy a local only solution
+
+### mlflow-demo
+Contains a simple configuration for running mlflow experiments in local mode and in a simulated remote tracking server fashion.
+
+### swarm
+Contains a fully functional docker swarm cluster based in vagrant virtual
+machines.
