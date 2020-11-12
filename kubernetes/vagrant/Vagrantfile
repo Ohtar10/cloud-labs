@@ -3,10 +3,6 @@ require 'yaml'
 current_dir = File.dirname(File.expand_path(__FILE__))
 configs = YAML.load_file("#{current_dir}/config.yaml")
 vagrant_config = configs['configs']
-bootstrap_args = ""
-if vagrant_config['docker']['test_channel'] then
-  bootstrap_args += "--test-channel"
-end
 
 Vagrant.configure("2") do |config|
   box_image = vagrant_config['box_image']

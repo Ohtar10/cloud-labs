@@ -20,5 +20,7 @@ Contains the Dockerfiles for Apache Spark and Apache Livy docker images as well 
 Contains a simple configuration for running mlflow experiments in local mode and in a simulated remote tracking server fashion.
 
 ### swarm
-Contains a fully functional docker swarm cluster based in vagrant virtual
-machines.
+Contains a fully functional docker swarm cluster based in vagrant virtual machines.
+
+### kubernetes
+Contains a fully functional kubernetes cluster based in vagrant virtual machines.
