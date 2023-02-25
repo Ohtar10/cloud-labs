@@ -1,0 +1,65 @@
+---
+- hosts: all
+  become: true
+  vars:
+    check_munge: false
+  tasks:
+    - name: General Setup
+      include: setup-common.yaml
+
+    - name: Install Ansible
+      apt:
+        name: ansible
+        update_cache: yes
+
+- hosts: all
+  become: false
+  tasks:
+    - name: Generate ssh keypair for vagrant user
+      community.crypto.openssh_keypair:
+        path: /home/vagrant/.ssh/id_rsa
+
+    - name: Copy the public key to shared key folder
+      copy:
+        remote_src: yes
+        src: /home/vagrant/.ssh/id_rsa.pub
+        dest: /shared/vagrant-head.pub
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Generate munge key
+      become_method: sudo
+      become_user: munge
+      command:
+        cmd: mungekey --verbose
+        creates: /etc/munge/munge.key 
+      notify:
+        - enable munge service
+        - start munge service
+      
+    - name: Secure munge key
+      file:
+        path: /etc/munge/munge.key
+        mode: '0600'
+        owner: munge
+      notify:
+        - enable munge service
+        - start munge service
+
+    - name: Copy Key to shared folder for propagation
+      copy:
+        remote_src: true
+        src: /etc/munge/munge.key
+        dest: /shared/munge.key
+    
+  handlers:
+    - name: enable munge service
+      systemd:
+        name: munge.service
+        enabled: yes
+
+    - name: start munge service
+      systemd:
+        name: munge.service
+        state: started

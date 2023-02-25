@@ -1,0 +1,83 @@
+- name: Update all packages to their latest version
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+- name: Install OS dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - openssl
+    - libssl-dev
+    - bzip2
+    - zlib1g
+    - pkgconf
+    - acl
+  
+
+- name: Create Directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /software
+  
+
+- name: Install Munge
+  block:
+  - name: Create munge user account
+    user:
+      name: munge
+      comment: Munge User Account
+      uid: 1100
+      shell: /usr/sbin/nologin
+  
+  - name: Download Munge release
+    get_url:
+      url: https://github.com/dun/munge/releases/download/munge-0.5.15/munge-0.5.15.tar.xz
+      dest: /software/munge-0.5.15.tar.xz
+      checksum: "sha512:https://github.com/dun/munge/releases/download/munge-0.5.15/munge-0.5.15.tar.xz.sha512"
+
+  - name: Unarchive Munge
+    unarchive:
+      src: /software/munge-0.5.15.tar.xz
+      dest: /opt/
+      remote_src: yes
+      owner: vagrant
+
+  - name: Configure
+    become: no
+    command:
+      chdir: /opt/munge-0.5.15
+      cmd: ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --runstatedir=/run
+
+  - name: Make default target
+    become: no
+    community.general.make:
+      chdir: /opt/munge-0.5.15
+
+  - name: Make check
+    become: no
+    community.general.make:
+      chdir: /opt/munge-0.5.15
+      target: check
+    when: check_munge
+
+  - name: Make install
+    community.general.make:
+      chdir: /opt/munge-0.5.15
+      target: install
+
+  - name: Secure Munge Installation
+    file:
+      path: "{{ item.path }}"
+      mode: "{{ item.mode }}"
+      owner: munge
+      state: directory
+    loop:
+      - { path: '/etc/munge', mode: '0700'}
+      - { path: '/var/lib/munge', mode: '0700'}
+      - { path: '/var/log/munge', mode: '0755'}
+
