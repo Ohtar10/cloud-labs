@@ -36,7 +36,8 @@
         cmd: mungekey --verbose
         creates: /etc/munge/munge.key 
       notify:
-        - restart munge service
+        - enable munge service
+        - start munge service
       
     - name: Secure munge key
       file:
@@ -44,44 +45,29 @@
         mode: '0600'
         owner: munge
       notify:
-        - restart munge service
+        - enable munge service
+        - start munge service
 
     - name: Copy Key to shared folder for propagation
       copy:
         remote_src: true
         src: /etc/munge/munge.key
         dest: /shared/munge.key
-
+    
+  handlers:
     - name: enable munge service
       systemd:
         name: munge.service
         enabled: yes
-      notify:
-        - start munge service
-    
-  handlers:
+
     - name: start munge service
       systemd:
         name: munge.service
         state: started
 
-    - name: restart munge service
-      systemd:
-        name: munge.service
-        state: restarted
-
 - hosts: all
   become: true
-  vars:
-    enable_db: false
   tasks:
-    - name: Fix Slurm Directory Permission
-      file:
-        path: /var/spool/slurmctld
-        state: directory
-        owner: slurm
-        group: slurm
-
     - name: Enable slurmctld
       systemd:
         name: slurmctld
@@ -90,8 +76,7 @@
     - name: Enable slurmdbd
       systemd:
         name: slurmdbd
-        enabled: yes
-      when: enable_db
+        enabled: no
 
     - name: Start slurmctld
       systemd:
@@ -101,5 +86,4 @@
     - name: Start slurmdbd
       systemd:
         name: slurmdbd
-        state: started
-      when: enable_db
+        state: stopped

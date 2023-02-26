@@ -10,19 +10,19 @@ Vagrant.configure("2") do |config|
   config.hostmanager.enabled = true
   config.vm.box = "ubuntu/jammy64"
 
-  # Manager node
-  config.vm.define "manager", primary: true do |manager|
-      manager_name = vagrant_config['manager_name']
-      manager_memory = vagrant_config['manager_memory']
+  # Controller node
+  config.vm.define "controller", primary: true do |controller|
+      controller_name = vagrant_config['controller_name']
+      controller_memory = vagrant_config['controller_memory']
 
-      manager.vm.hostname = manager_name
-      manager.vm.network "private_network", ip: "192.168.56.99"
+      controller.vm.hostname = controller_name
+      controller.vm.network "private_network", ip: "192.168.56.99"
 
-      manager.vm.synced_folder "../ansible", "/ansible-playbooks"
-      manager.vm.synced_folder "../resources", "/resources"
-      manager.vm.synced_folder "../shared", "/shared"
+      controller.vm.synced_folder "../ansible", "/ansible-playbooks"
+      controller.vm.synced_folder "../resources", "/resources"
+      controller.vm.synced_folder "../shared", "/shared"
 
-      manager.vm.provision :ansible do |ansible| 
+      controller.vm.provision :ansible do |ansible| 
         ansible.playbook = "../ansible/master-playbook.yml"
         ansible.extra_vars = {
           node_ip: "192.168.56.99",
@@ -30,9 +30,9 @@ Vagrant.configure("2") do |config|
         }
       end
 
-      manager.vm.provider :virtualbox do |v|
-          v.customize ["modifyvm", :id, "--name", manager_name]
-          v.customize ["modifyvm", :id, "--memory", manager_memory]
+      controller.vm.provider :virtualbox do |v|
+          v.customize ["modifyvm", :id, "--name", controller_name]
+          v.customize ["modifyvm", :id, "--memory", controller_memory]
       end
   end
 

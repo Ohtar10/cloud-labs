@@ -1,7 +1,7 @@
 ---
 configs:
-    manager_name: 'head'
-    manager_memory: 1024
+    controller_name: 'controller'
+    controller_memory: 1024
     worker_name: 'worker'
     workers: 3
     worker_memory: 1024

@@ -19,8 +19,6 @@
         remote_src: yes
         src: /shared/munge.key
         dest: /etc/munge/munge.key
-      notify:
-        - restart munge service
 
     - name: Secure munge key
       file:
@@ -28,40 +26,23 @@
         mode: '0600'
         owner: munge
       notify:
-        - restart munge service
-
-    - name: Enable munge service
-      systemd:
-        name: munge.service
-        enabled: yes
-      notify:
+        - enable munge service
         - start munge service
 
   handlers:
+    - name: enable munge service
+      systemd:
+        name: munge.service
+        enabled: yes
+
     - name: start munge service
       systemd:
         name: munge.service
         state: started
 
-    - name: restart munge service
-      systemd:
-        name: munge.service
-        state: restarted
-
 - hosts: all
   become: true
   tasks:
-    - name: Patch Slurm Cgroup Integration
-      blockinfile:
-        path: /etc/slurm/cgroup.conf
-        block: |
-          CgroupMountpoint=/sys/fs/cgroup
-          CgroupAutomount=yes
-          ConstrainCores=no
-          ConstrainRAMSpace=no
-        create: yes
-        state: present
-
     - name: Enable slurmd
       systemd:
         name: slurmd

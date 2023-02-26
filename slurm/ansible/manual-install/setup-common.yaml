@@ -1,0 +1,155 @@
+- name: Update all packages to their latest version
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+- name: Install OS dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - openssl
+    - libssl-dev
+    - bzip2
+    - zlib1g
+    - pkgconf
+    - acl
+  
+- name: Create Directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /software
+
+- name: Create user accounts
+  user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid }}"
+    shell: /bin/bash
+    comment: End User Account for Slurm
+  loop:
+    - { name: 'aragorn', uid: 1101 }
+    - { name: 'boromir', uid: 1102 }
+    - { name: 'gandalf', uid: 1103 }
+    - { name: 'legolas', uid: 1104 }
+    - { name: 'gimli', uid: 1105 }
+    - { name: 'frodo', uid: 1106 }
+    - { name: 'sam', uid: 1107 }
+    - { name: 'merry', uid: 1108 }
+    - { name: 'pippin', uid: 1109 }
+  
+
+- name: Install Munge
+  block:
+  - name: Create munge user account
+    user:
+      name: munge
+      comment: Munge User Account
+      uid: 1100
+      shell: /usr/sbin/nologin
+  
+  - name: Download Munge release
+    get_url:
+      url: https://github.com/dun/munge/releases/download/munge-0.5.15/munge-0.5.15.tar.xz
+      dest: /software/munge-0.5.15.tar.xz
+      checksum: "sha512:https://github.com/dun/munge/releases/download/munge-0.5.15/munge-0.5.15.tar.xz.sha512"
+
+  - name: Unarchive Munge
+    unarchive:
+      src: /software/munge-0.5.15.tar.xz
+      dest: /opt/
+      remote_src: yes
+      owner: vagrant
+
+  - name: Configure
+    become: no
+    command:
+      chdir: /opt/munge-0.5.15
+      cmd: ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --runstatedir=/run
+
+  - name: Make default target
+    become: no
+    community.general.make:
+      chdir: /opt/munge-0.5.15
+
+  - name: Make check
+    become: no
+    community.general.make:
+      chdir: /opt/munge-0.5.15
+      target: check
+    when: check_munge
+
+  - name: Make install
+    community.general.make:
+      chdir: /opt/munge-0.5.15
+      target: install
+
+  - name: Secure Munge Installation
+    file:
+      path: "{{ item.path }}"
+      mode: "{{ item.mode }}"
+      owner: munge
+      state: directory
+    loop:
+      - { path: '/etc/munge', mode: '0700'}
+      - { path: '/var/lib/munge', mode: '0700'}
+      - { path: '/var/log/munge', mode: '0755'}
+
+- name: Install Slurm
+  block:
+    - name: Create slurm user account
+      user:
+        name: slurm
+        uid: 1200
+        shell: /bin/bash
+        comment: Slurm User Account
+
+    - name: Create slurm directories
+      file:
+        path: "{{ item }}"
+        owner: slurm
+        state: directory
+      loop:
+        - /var/log/slurm/
+        - /var/spool/slurm/
+        - /var/run/slurm
+
+    - name: Download Slurm Release
+      get_url:
+        url: https://download.schedmd.com/slurm/slurm-22.05.8.tar.bz2
+        dest: /software/slurm-22.05.8.tar.bz2
+        checksum: "sha1:b808bc7b39ec6e7df28af6866127463bc273a0b5"
+
+    - name: Unarchive Slurm
+      unarchive:
+        src: /software/slurm-22.05.8.tar.bz2
+        dest: /opt/
+        remote_src: yes
+        owner: vagrant
+
+    - name: Configure
+      become: no
+      command:
+        chdir: /opt/slurm-22.05.8
+        cmd: ./configure --prefix=/usr --sysconfdir=/etc # --with-munge=/opt/munge-0.5.15
+
+    - name: Make default target
+      become: no
+      community.general.make:
+        chdir: /opt/slurm-22.05.8
+
+    - name: Make install
+      community.general.make:
+        chdir: /opt/slurm-22.05.8
+        target: install
+
+    - name: Copy slurm configuration file
+      copy:
+        src: "{{ slurm_config_file }}"
+        dest: /etc/slurm.conf
+
+    - name: Set Slurm libary location
+      command:
+        cmd: ldconfig -n /usr/lib
