@@ -24,7 +24,7 @@
       copy:
         remote_src: yes
         src: /home/vagrant/.ssh/id_rsa.pub
-        dest: /shared/vagrant-head.pub
+        dest: /shared/creds/vagrant-head.pub
 
 - hosts: all
   become: true
@@ -50,7 +50,7 @@
       copy:
         remote_src: true
         src: /etc/munge/munge.key
-        dest: /shared/munge.key
+        dest: /shared/creds/munge.key
 
     - name: enable munge service
       systemd:
@@ -73,8 +73,174 @@
 - hosts: all
   become: true
   vars:
-    enable_db: false
+    mysql_root_username: root
+    mariadb_socket: /var/run/mysqld/mysqld.sock
   tasks:
+    - name: Install MariaDB
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+        - mariadb-server
+        - mariadb-client
+        - mariadb-common
+        - python3-dev
+        - python3-mysqldb
+        - libmysqlclient-dev
+
+    - name: Enable MariaDB service
+      systemd:
+        name: mariadb
+        enabled: yes
+        state: restarted
+
+    - name: Secure MariaDB
+      block:
+        - name: Disallow remote root login
+          command: |
+            mysql -NBe "DELETE FROM mysql.user
+            WHERE User='{{ mysql_root_username }}' AND Host NOT IN ('localhost', '127.0.0.1', '::1')"    
+          changed_when: false
+
+        - name: Check maria root pass file
+          stat:
+            path: /shared/creds/maria-root.txt
+          register: maria_root_file
+
+        - name: Generate MariaDB Pass
+          block:
+            - name: Generate Random Pass
+              shell: tr -d -c "a-zA-Z0-9" < /dev/urandom | head -c 10
+              register: mariadb_root_pwd
+
+            - name: Save mysql root password in file
+              copy: 
+                content: |
+                  {{ mariadb_root_pwd.stdout }}
+                dest: /shared/creds/maria-root.txt
+
+            - name: Set a password for the MariaDB root account
+              community.mysql.mysql_user:
+                login_unix_socket: "{{ mariadb_socket }}"
+                check_implicit_admin: yes
+                name: "{{ mysql_root_username }}"
+                password: "{{ mariadb_root_pwd.stdout }}"
+                priv: "*.*:ALL,GRANT"
+                state: present
+              no_log: false
+          when: not maria_root_file.stat.exists
+
+        - name: Read password file
+          shell:
+            cmd: cat /shared/creds/maria-root.txt
+          register: mariadb_root_pwd
+
+        - name: Get list of hosts for the anonymous user
+          ansible.builtin.command: mysql -NBe 'SELECT Host FROM mysql.user WHERE User = ""'
+          register: mysql_anonymous_hosts
+          changed_when: false
+          check_mode: false
+
+        - name: Remove anonymous MySQL users
+          community.mysql.mysql_user:
+            check_implicit_admin: yes
+            login_unix_socket: "{{ mariadb_socket }}"
+            name: ""
+            host: "{{ item }}"
+            state: absent
+          with_items: "{{ mysql_anonymous_hosts.stdout_lines|default([]) }}"
+
+        - name: Remove MySQL test database
+          community.mysql.mysql_db:
+            check_implicit_admin: yes
+            login_unix_socket: "{{ mariadb_socket }}"
+            name: 'test'
+            state: absent
+
+        - name: Create slurm accounting database
+          community.mysql.mysql_db:
+            name: slurm_acct_db
+            login_user: root
+            login_password: "{{ mariadb_root_pwd.stdout }}"
+            login_host: localhost
+            state: present
+
+        - name: Create slurm job completion database
+          community.mysql.mysql_db:
+            name: slurm_jobcomp_db
+            login_user: root
+            login_password: "{{ mariadb_root_pwd.stdout }}"
+            login_host: localhost
+            state: present
+
+        - name: Create user for slurm accounting db
+          community.mysql.mysql_user:
+            name: slurm
+            password: "slurmdb"
+            host: "%"
+            # priv: slurm.*:SELECT,INSERT,UPDATE,DELETE
+            priv: slurm_acct_db.*:ALL
+            login_user: root
+            login_password: "{{ mariadb_root_pwd.stdout }}"
+            login_host: localhost
+            state: present
+
+        - name: Grant privileges to slurm user on job completion db
+          community.mysql.mysql_user:
+            name: slurm
+            password: "slurmdb"
+            host: "%"
+            priv: slurm_jobcomp_db.*:ALL
+            login_user: root
+            login_password: "{{ mariadb_root_pwd.stdout }}"
+            login_host: localhost
+            state: present
+            append_privs: yes
+
+        - name: Enable listening from anywhere
+          blockinfile:
+            path: /etc/mysql/my.cnf
+            block: |
+              [mysqld]
+              skip-networking=0
+              skip-bind-address
+          notify:
+            - restart_mariadb
+  handlers:
+    - name: restart_mariadb
+      systemd:
+        name: mariadb
+        state: restarted
+
+- hosts: all
+  become: true
+  vars:
+    enable_db: yes
+    slurmdb_config_file: "../resources/slurmdb-basic-config.conf"
+  tasks:
+    - name: Slurmdbd
+      block:
+        - name: Copy slurmdb configuration file
+          copy:
+            src: "{{ slurmdb_config_file }}"
+            dest: /etc/slurm/slurmdbd.conf
+            owner: slurm
+            mode: '0600'
+
+        - name: Enable slurmdbd
+          systemd:
+            name: slurmdbd
+            enabled: yes
+          when: enable_db
+
+        - name: Start slurmdbd
+          systemd:
+            name: slurmdbd
+            state: started
+          when: enable_db
+      when: enable_db
+
     - name: Fix Slurm Directory Permission
       file:
         path: /var/spool/slurmctld
@@ -87,19 +253,7 @@
         name: slurmctld
         enabled: yes
 
-    - name: Enable slurmdbd
-      systemd:
-        name: slurmdbd
-        enabled: yes
-      when: enable_db
-
     - name: Start slurmctld
       systemd:
         name: slurmctld
         state: started
-
-    - name: Start slurmdbd
-      systemd:
-        name: slurmdbd
-        state: started
-      when: enable_db

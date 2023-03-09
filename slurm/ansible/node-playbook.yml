@@ -11,13 +11,13 @@
     - name: Copy vagrant user public key to authorized keys
       blockinfile:
         path: /home/vagrant/.ssh/authorized_keys
-        block: "{{ lookup('file', '../shared/vagrant-head.pub') }}"
+        block: "{{ lookup('file', '../shared/creds/vagrant-head.pub') }}"
 
     - name: Copy munge key to expected location
       become_user: munge
       copy:
         remote_src: yes
-        src: /shared/munge.key
+        src: /shared/creds/munge.key
         dest: /etc/munge/munge.key
       notify:
         - restart munge service
