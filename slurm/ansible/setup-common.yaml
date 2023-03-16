@@ -50,6 +50,21 @@
     - slurm-wlm
     - slurmdbd
     - slurm-client
+    - podman
+
+- name: Ensure linger is enabled for user accounts
+  command: "loginctl enable-linger {{ item }}"
+  loop:
+    - aragorn
+    - boromir
+    - gandalf
+    - legolas
+    - gimli
+    - frodo
+    - sam
+    - merry
+    - pippin
+  
 
 - name: Create slurm directories
   file:

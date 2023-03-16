@@ -4,5 +4,6 @@
 #SBATCH -J hello-world
 
 printf "Hello World Slurm! running from host: %s\n" $(hostname)
+printf "Running in release: \n %s\n" $(cat /etc/*release) 
 
 exit $?
