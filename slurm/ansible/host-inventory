@@ -1,0 +1,14 @@
+[local]
+localhost		ansible_connection=local
+
+[head]
+localhost		ansible_connection=local
+
+[workers]
+worker1
+worker2
+worker3
+
+[cluster:children]
+head
+workers

@@ -1,0 +1,69 @@
+require 'yaml'
+
+current_dir = File.dirname(File.expand_path(__FILE__))
+configs = YAML.load_file("#{current_dir}/config.yaml")
+vagrant_config = configs['configs']
+
+docker_channel = vagrant_config['docker']['install_channel']
+
+Vagrant.configure("2") do |config|
+  config.hostmanager.enabled = true
+  config.vm.box = "debian/bullseye64"
+
+  # Controller node
+  config.vm.define "controller", primary: true do |controller|
+      controller_name = vagrant_config['controller_name']
+      controller_memory = vagrant_config['controller_memory']
+
+      controller.vm.hostname = controller_name
+      controller.vm.network "private_network", ip: "192.168.56.99"
+
+      controller.vm.synced_folder "../ansible", "/ansible-playbooks", type: "nfs"
+      controller.vm.synced_folder "../resources", "/resources", type: "nfs"
+      controller.vm.synced_folder "../shared", "/shared", type: "nfs"
+
+      controller.vm.provision :ansible do |ansible| 
+        ansible.playbook = "../ansible/master-playbook.yml"
+        ansible.extra_vars = {
+          node_ip: "192.168.56.99",
+          docker_channel: docker_channel
+        }
+      end
+
+      controller.vm.provider :libvirt do |v|
+          v.uri = 'qemu+unix:///system'
+          v.memory = controller_memory
+          v.host = controller_name
+      end
+  end
+
+  # Cluster machines
+  begin
+    workers = vagrant_config['workers']
+    worker_name = vagrant_config['worker_name']
+    worker_memory = vagrant_config['worker_memory']
+    (1..workers).each do |i|
+        config.vm.define "#{worker_name}#{i}" do |node|
+            node.vm.hostname = "#{worker_name}#{i}"
+            node.vm.network "private_network", ip: "192.168.56.10#{i}"
+            node.vm.synced_folder "../resources", "/resources", type: "rsync"
+            node.vm.synced_folder "../shared", "/shared", type: "rsync"
+
+            node.vm.provision :ansible do |ansible| 
+              ansible.playbook = "../ansible/node-playbook.yml"
+              ansible.extra_vars = {
+                node_ip: "192.168.56.99",
+                docker_channel: docker_channel
+              }
+            end
+
+            node.vm.provider :libvirt do |v|
+                v.uri = 'qemu+unix:///system'
+                v.memory = worker_memory
+                v.host = "#{worker_name}#{i}"
+                v.cpus = 2
+            end
+          end
+        end
+    end
+end

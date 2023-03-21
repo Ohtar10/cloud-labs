@@ -1,0 +1,85 @@
+- name: Create munge user account
+  user:
+    name: munge
+    comment: Munge User Account
+    uid: 1100
+    shell: /usr/sbin/nologin
+
+- name: Create slurm user account
+  user:
+    name: slurm
+    uid: 1200
+    shell: /bin/bash
+    comment: Slurm User Account
+
+- name: Create user accounts
+  user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid }}"
+    shell: /bin/bash
+    comment: End User Account for Slurm
+  loop:
+    - { name: 'aragorn', uid: 1101 }
+    - { name: 'boromir', uid: 1102 }
+    - { name: 'gandalf', uid: 1103 }
+    - { name: 'legolas', uid: 1104 }
+    - { name: 'gimli', uid: 1105 }
+    - { name: 'frodo', uid: 1106 }
+    - { name: 'sam', uid: 1107 }
+    - { name: 'merry', uid: 1108 }
+    - { name: 'pippin', uid: 1109 }
+
+- name: Update all packages to their latest version
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+- name: Install OS dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - openssl
+    - libssl-dev
+    - bzip2
+    - zlib1g
+    - pkgconf
+    - acl
+    - munge
+    - slurm-wlm
+    - slurmdbd
+    - slurm-client
+    - podman
+
+- name: Ensure linger is enabled for user accounts
+  command: "loginctl enable-linger {{ item }}"
+  loop:
+    - aragorn
+    - boromir
+    - gandalf
+    - legolas
+    - gimli
+    - frodo
+    - sam
+    - merry
+    - pippin
+  
+
+- name: Create slurm directories
+  file:
+    path: "{{ item }}"
+    owner: slurm
+    state: directory
+  loop:
+    - /var/log/slurm/
+    - /var/spool/slurm/
+    - /var/run/slurm
+    - /etc/slurm
+
+- name: Copy slurm configuration file
+  copy:
+    src: "{{ slurm_config_file }}"
+    dest: /etc/slurm/slurm.conf
+
+  

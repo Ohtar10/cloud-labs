@@ -1,0 +1,54 @@
+---
+- hosts: all
+  become: true
+  vars:
+    check_munge: false
+    slurm_config_file: "../resources/slurm-basic-config.conf"
+  tasks:
+    - name: General Setup
+      include: setup-common.yaml
+
+    - name: Copy vagrant user public key to authorized keys
+      blockinfile:
+        path: /home/vagrant/.ssh/authorized_keys
+        block: "{{ lookup('file', '../shared/vagrant-head.pub') }}"
+
+    - name: Copy munge key to expected location
+      become_user: munge
+      copy:
+        remote_src: yes
+        src: /shared/munge.key
+        dest: /etc/munge/munge.key
+
+    - name: Secure munge key
+      file:
+        path: /etc/munge/munge.key
+        mode: '0600'
+        owner: munge
+      notify:
+        - enable munge service
+        - start munge service
+
+  handlers:
+    - name: enable munge service
+      systemd:
+        name: munge.service
+        enabled: yes
+
+    - name: start munge service
+      systemd:
+        name: munge.service
+        state: started
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Enable slurmd
+      systemd:
+        name: slurmd
+        enabled: yes
+
+    - name: Start slurmd
+      systemd:
+        name: slurmd
+        state: started

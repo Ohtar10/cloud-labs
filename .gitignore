@@ -24,3 +24,6 @@ spark-emr-jupyter/keys/spark-emr.pub
 
 # vagrant files
 .vagrant
+
+# Other files
+creds/
