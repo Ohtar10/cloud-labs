@@ -1,0 +1,34 @@
+base-image:
+  name: debian
+  image-url: 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2'
+
+network:
+  name: network
+  cidr: 192.168.10.0/24
+  mode: nat
+
+shared-folders:
+  - source: /home/ohtar10/git/cloud-labs/kubernetes-libvirt/ansible
+    target: ansible
+  - source: /home/ohtar10/git/cloud-labs/kubernetes-libvirt/resources
+    target: resources
+
+storage:
+  pool:
+    name: cluster
+    type: dir
+    path: /var/lib/libvirt/images/k8s
+  
+control-plane:
+    name: 'control-plane'
+    resources: 
+        memory: 2048
+        cpu: 2
+        storage: 10G
+workers:
+    name: 'node'
+    count: 1
+    resources:
+        memory: 2048
+        cpu: 2
+        storage: 10G

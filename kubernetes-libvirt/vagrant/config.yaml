@@ -1,0 +1,14 @@
+---
+configs:
+    box_image: 'debian/bookworm64'
+    control-plane:
+        name: 'control-plane'
+        resources: 
+            memory: 2048
+            cpu: 2
+    workers:
+        name: 'node'
+        count: 3
+        resources:
+            memory: 2048
+            cpu: 2

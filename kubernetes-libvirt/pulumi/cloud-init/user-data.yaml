@@ -1,0 +1,19 @@
+#cloud-config
+ssh_pwauth: True
+
+hostname: {{ .Hostname }}
+users:
+  - name: debian
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+
+chpasswd:
+  list: 
+    - debian:debian
+  expire: False
+
+
+package_update: True
+package_upgrade: True
+packages:
+  - qemu-guest-agent

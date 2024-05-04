@@ -1,0 +1,9 @@
+[all:children]
+control_plane
+workers
+
+[control_plane]
+control-plane   ansible_connection=local
+
+[workers]
+node-[1:3]  ansible_user=vagrant

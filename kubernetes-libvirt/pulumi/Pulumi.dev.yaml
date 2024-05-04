@@ -1,0 +1,3 @@
+encryptionsalt: v1:skGDztYwUJg=:v1:Uuu7WQ8+SfJMMasa:IYf/D9k8N904w8tgXCPymYeQcDuRBA==
+config:
+  k8s-libvirt:libvirt_uri: qemu+unix:///system

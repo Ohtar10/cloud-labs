@@ -1,0 +1,63 @@
+require 'yaml'
+
+current_dir = File.dirname(File.expand_path(__FILE__))
+configs = YAML.load_file("#{current_dir}/config.yaml")
+vagrant_config = configs['configs']
+cp_config = vagrant_config['control-plane']
+worker_config = vagrant_config['workers']
+
+Vagrant.configure("2") do |config|
+  config.hostmanager.enabled = true
+  config.vm.box = vagrant_config['box_image']
+
+  # control-plane
+  config.vm.define "control-plane", primary: true do |cp|
+    cp.vm.hostname = cp_config['name']
+
+    cp.vm.synced_folder "../ansible", "/ansible-playbooks", 
+      type: "nfs",
+      nfs_version: 4,
+      nfs_udp: false
+    cp.vm.synced_folder "../resources", "/resources", 
+      type: "nfs",
+      nfs_version: 4,
+      nfs_udp: false
+
+    cp.vm.provision :ansible do |ansible| 
+      ansible.playbook = "../ansible/master-playbook.yml"
+    end
+
+    cp.vm.provider :libvirt do |v|
+        v.uri = 'qemu+unix:///system'
+        v.memory = cp_config['resources']['memory']
+        v.cpus = cp_config['resources']['cpu']
+    end
+  end
+
+  num_workers = worker_config['count']
+  worker_name = worker_config['name']
+  begin
+    (1..num_workers).each do |i|
+        node_name = "#{worker_name}-#{i}"
+        config.vm.define node_name do |node|
+            node.vm.hostname = node_name
+
+            node.vm.synced_folder "../resources", "/resources", 
+              type: "nfs",
+              nfs_version: 4,
+              nfs_udp: false
+
+            node.vm.provision :ansible do |ansible| 
+                ansible.playbook = "../ansible/node-playbook.yml"
+            end
+
+            node.vm.provider :libvirt do |v|
+                v.uri = 'qemu+unix:///system'
+                v.memory = worker_config['resources']['memory']
+                v.cpus = worker_config['resources']['cpu']
+            end
+          end
+        end
+  end
+
+end

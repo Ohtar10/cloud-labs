@@ -1,0 +1,43 @@
+# Reference https://kubernetes.io/blog/2019/03/15/kubernetes-setup-using-ansible-and-vagrant/
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: General Setup
+    include: setup-common.yaml
+
+  - name: Add control-plane public key
+    block:
+    - name: Read vagrant ssh key content
+      command: cat /resources/vagrant-ssh.pub
+      register: vagrant_key
+
+    - name: Add vagrant key to authorized keys
+      lineinfile:
+        path: /home/vagrant/.ssh/authorized_keys 
+        line: "{{ vagrant_key.stdout_lines[0] }}"
+
+  handlers:
+  - name: Reboot
+    reboot:
+    
+  - name: docker status
+    service: name=docker state=started
+
+- hosts: all
+  become: true
+  tasks:
+  - name: Copy the join command to server location
+    copy: 
+      src: /resources/join-command 
+      remote_src: yes
+      dest: /tmp/join-command.sh 
+      mode: 0777
+    retries: 15
+    delay: 10
+
+  - name: Join the node to cluster
+    shell: 
+      cmd: sh /tmp/join-command.sh && touch k8s.joined
+      creates: k8s.joined
+

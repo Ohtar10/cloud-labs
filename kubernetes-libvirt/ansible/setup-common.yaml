@@ -1,0 +1,168 @@
+- name: Install packages that allow apt to be used over HTTPS
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg-agent
+      - software-properties-common
+      - python3
+      - python3-pip
+      - vim
+      - bash-completion
+      - open-iscsi
+      - cryptsetup
+      - jq
+
+- name: Ensure dns records in /etc/resolv.conf
+  lineinfile:
+    path: /etc/resolv.conf
+    line: nameserver 8.8.8.8
+    insertbefore: 'BOF'
+    state: present
+
+- name: Configure locale
+  block:
+  - name: Ensure en_US.UTF-8 is enabled
+    lineinfile:
+      path: /etc/locale.gen
+      regexp: '^#\s*en_US.UTF-8 UTF-8$'
+      line: en_US.UTF-8 UTF-8
+    register: locale_enable
+
+  - name: Generate locale if necessary
+    command: locale-gen
+    when: locale_enable.changed
+
+  - name: Ensure locale for vagrant user
+    become: false 
+    lineinfile:
+      path: /home/vagrant/.bashrc
+      regexp: '^export LC_ALL="en_US.UTF-8"'
+      line: 'export LC_ALL="en_US.UTF-8"'
+
+  - name: Set system-wide locale (disabled)
+    blockinfile:
+      path: /etc/default/locale
+      backup: yes
+      marker: "# {mark} ANSIBLE MANAGED BLOCK #"
+      block: |
+        LANG=en_US.UTF-8
+        LC_ALL=en_US.UTF-8
+    notify: Reboot
+    when: false
+
+- name: Add an apt signing key for docker
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+
+- name: Add apt repository for stable version
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+    state: present
+
+- name: Install docker and its dependencies
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+  notify:
+    - docker status
+
+- name: Add vagrant user to docker group
+  user:
+    name: vagrant
+    group: docker
+
+- name: Remove swapfile from /etc/fstab
+  mount:
+    name: "{{ item }}"
+    fstype: swap
+    state: absent
+  with_items:
+    - swap
+    - none
+
+- name: Disable swap
+  command: swapoff -a
+  when: ansible_swaptotal_mb > 0
+
+- name: Add an apt signing key for kubernetes
+  apt_key:
+    url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+    state: present
+
+- name: Adding apt repository for kubernetes
+  apt_repository:
+    repo: deb https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /
+    state: present
+    filename: kubernetes.list
+  
+- name: Install Kubernetes binaries
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - kubelet
+      - kubeadm
+      - kubectl
+
+- name: Ensure kubectl alias in vagrant .bashrc
+  become: no
+  lineinfile:
+    path: /home/vagrant/.bashrc
+    regexp: '^alias k=kubectl$'
+    line: 'alias k=kubectl'
+
+- name: Ensure kubectl autocompletion
+  become: no
+  block:
+  - name: Ensure kubectl completion script is installed
+    shell:
+      cmd: kubectl completion bash > /home/vagrant/.kubectl_completion
+      creates: /home/vagrant/.kubectl_completion
+
+  - name: Ensure kubectl completion is sourced in bashrc
+    lineinfile:
+      path: /home/vagrant/.bashrc
+      regexp: '^source ~/\.kubectl_completion$'
+      line: 'source ~/.kubectl_completion'
+  
+  - name: Ensure completion work for alias as well
+    lineinfile:
+      path: /home/vagrant/.bashrc
+      regexp: '^complete -o default -F __start_kubectl k$'
+      line: 'complete -o default -F __start_kubectl k'
+
+      
+- name: Configure node ip
+  lineinfile:
+    path: /etc/default/kubelet
+    line: KUBELET_EXTRA_ARGS=--node-ip={{ ansible_default_ipv4.address }}
+    create: yes
+    state: present
+  register: kubeletip
+
+- name: Restart kubelet
+  service:
+    name: kubelet
+    daemon_reload: yes
+    state: restarted
+  when: kubeletip.changed
+
+- name: Install cri-dockerd
+  apt:
+    deb: https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.13/cri-dockerd_0.3.13.3-0.debian-bookworm_amd64.deb
+    state: present

@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: doks
+  namespace: argocd
+spec:
+  destination:
+    namespace: doks
+    server: https://192.168.247.18:8443
+  project: team-x
+  source:
+    path: doks-example
+    repoURL: https://github.com/digitalocean/kubernetes-sample-apps.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - CreateNamespace=true

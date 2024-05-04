@@ -1,0 +1,97 @@
+# Reference https://kubernetes.io/blog/2019/03/15/kubernetes-setup-using-ansible-and-vagrant/
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: General Setup
+    include: setup-common.yaml
+
+  - name: Install additional OS packages
+    apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+    vars:
+        packages:
+          - ansible
+
+  - name: Generate ssh key-pair for vagrant user in control-plane
+    community.crypto.openssh_keypair:
+      path: /home/vagrant/.ssh/id_rsa
+      owner: vagrant
+      group: vagrant
+
+  - name: Store public key for distribution
+    copy:
+      src: /home/vagrant/.ssh/id_rsa.pub
+      remote_src: yes
+      dest: /resources/vagrant-ssh.pub
+
+  handlers:
+  - name: Reboot
+    reboot:
+
+  - name: docker status
+    service: name=docker state=started
+
+
+- hosts: all
+  become: true
+  tasks:
+  - name: Initialize the Kubernetes cluster using kubeadm
+    command: 
+      cmd: kubeadm init --control-plane-endpoint=control-plane --apiserver-cert-extra-sans=control-plane --node-name=control-plane --pod-network-cidr=192.168.0.0/16 --cri-socket unix:///var/run/cri-dockerd.sock
+      creates: /etc/kubernetes/admin.conf
+
+ 
+  - name: Prepare kubeconfig folder for vagrant user
+    file:
+      path: /home/vagrant/.kube
+      state: directory
+      owner: vagrant
+      group: vagrant
+      mode: 0755
+
+  - name: Copy kubeconfig for vagrant user & resources
+    copy:
+      src: /etc/kubernetes/admin.conf
+      remote_src: yes
+      dest: "{{ item }}"
+      owner: vagrant
+      group: vagrant
+      mode: 0600
+    loop:
+      - /home/vagrant/.kube/config
+      - /resources/kubeconfig.yaml
+
+  - name: Install calico pod network
+    become: false
+    shell: 
+      cmd: kubectl create -f https://docs.projectcalico.org/manifests/calico.yaml && touch calico.ok
+      creates: calico.ok
+
+  - name: Prepare join command
+    shell: echo "$(kubeadm token create --print-join-command) --cri-socket unix:///var/run/cri-dockerd.sock"
+    register: join_command
+
+  - name: Save join command to local file
+    copy:
+      content: "{{ join_command.stdout_lines[0] }}"
+      dest: /resources/join-command
+  
+  - name: Add apt key for helm
+    apt_key:
+      url: https://baltocdn.com/helm/signing.asc
+      state: present
+
+  - name: Add apt repository for helm
+    apt_repository:
+      repo: deb https://baltocdn.com/helm/stable/debian/ all main
+      state: present
+
+  - name: Install helm
+    apt:
+        name: helm
+        state: present
+        update_cache: yes
+    

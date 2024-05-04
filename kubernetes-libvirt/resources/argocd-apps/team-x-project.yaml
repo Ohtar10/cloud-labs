@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: team-x
+  namespace: argocd
+spec:
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  description: Project destined to manage vcluster of team-x
+  destinations:
+  - name: '*'
+    namespace: '*'
+    server: https://192.168.247.18:8443
+  sourceRepos:
+  - '*'

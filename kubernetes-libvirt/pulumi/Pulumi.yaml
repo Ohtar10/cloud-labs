@@ -1,0 +1,7 @@
+name: k8s-libvirt
+runtime: go
+description: K8s cluster created with libvirt & pulumi
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: go
